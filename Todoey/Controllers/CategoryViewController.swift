@@ -8,8 +8,9 @@
 
 import UIKit
 import RealmSwift
+import ChameleonFramework
 
-class CategoryViewController: UITableViewController {
+class CategoryViewController: SwipeTableViewController {
     //realm.io/docs/swift/latest#error-handling
     // creating a Realm can fail if resources are constrained, but can only happen the first time a Realm instance is created on a given thread
     let realm = try! Realm()
@@ -19,12 +20,8 @@ class CategoryViewController: UITableViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        // Uncomment the following line to preserve selection between presentations
-        // self.clearsSelectionOnViewWillAppear = false
-
-        // Uncomment the following line to display an Edit button in the navigation bar for this view controller.
-        // self.navigationItem.rightBarButtonItem = self.editButtonItem
         loadCategories()
+        tableView.separatorStyle = .none
     }
     
     //MARK: - Add New Categories
@@ -34,7 +31,7 @@ class CategoryViewController: UITableViewController {
         let action = UIAlertAction(title: "Add", style: .default) { (action) in
             let newCategory = Category()
             newCategory.name = textField.text!
-            
+            newCategory.color = UIColor.randomFlat.hexValue()
             self.save(category: newCategory)
         }
         alert.addAction(action)
@@ -53,8 +50,17 @@ class CategoryViewController: UITableViewController {
     }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "CategoryCell", for: indexPath)
-        cell.textLabel?.text = categories?[indexPath.row].name ?? "No Categories added yet!"
+        // capture the return from the superclass method
+        let cell = super.tableView(tableView, cellForRowAt: indexPath)
+        
+        let category = categories?[indexPath.row]
+        guard let backgroundColor = UIColor(hexString: category?.color ?? "1D9BF6") else {fatalError()}
+        
+        cell.textLabel?.text = category?.name ?? "No Categories added yet!"
+        
+        cell.backgroundColor = backgroundColor
+        cell.textLabel?.textColor = ContrastColorOf(backgroundColor, returnFlat: true)
+        
         return cell
     }
     
@@ -89,6 +95,19 @@ class CategoryViewController: UITableViewController {
         categories = realm.objects(Category.self)
         
         tableView.reloadData()
+    }
+    
+    //MARK: - Delete data
+    override func updateModel(at indexPath: IndexPath) {
+        if let categoryForDeletion = self.categories?[indexPath.row] {
+            do {
+                try realm.write {
+                    realm.delete(categoryForDeletion)
+                }
+            } catch {
+                print("Error deleting category, \(error)")
+            }
+        }
     }
     
 }
